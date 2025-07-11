@@ -1,17 +1,22 @@
 #%%
 import pandas as pd
+import numpy as np
 # Function to extract and standardize date from a column name
 import re
 from datetime import datetime
 
+#%%
+
 # Load the ODS file
-file_path = "/mnt/c/Users/HMARTINEZ/Downloads/Weight Measurements (30.05.2025).ods"
+file_path = "/mnt/c/Users/HMARTINEZ/Downloads/Mice and Citric Acid Weight Measurements (09.07.2025).ods"
 
 # Use the third row (index 2) as header
-df_clean = pd.read_excel(file_path, engine="odf", sheet_name=0, skiprows=2, nrows=12)
+df_clean = pd.read_excel(file_path, engine="odf", sheet_name="Mice weights", skiprows=2, nrows=12)
+df_ca = pd.read_excel(file_path, engine="odf", sheet_name="Citric acid weight", skiprows=3, nrows=2)
 
 # Extract the original column names for processing
 original_columns = df_clean.columns
+original_columns_ca = df_ca.columns
 
 def extract_date(col_name):
     # Try to find a date in the format dd/mm/yyyy
@@ -25,9 +30,13 @@ def extract_date(col_name):
 
 # Rename columns
 df_clean.columns = [extract_date(col) for col in original_columns]
+df_ca.columns = [extract_date(col) for col in original_columns_ca]
+
 
 # Show preview of the cleaned DataFrame
 print(df_clean.head())
+
+print(df_ca.head())
 
 # %%
 # Drop the first two columns and assign the first row as the new header
@@ -80,3 +89,30 @@ print(df_clean)
 df_clean.to_pickle("cleaned_weight_measurements.pkl")
 
 # %%
+# combine both rows of the citric acid weight DataFrame into a single row
+df_ca_combined = df_ca.iloc[0].combine_first(df_ca.iloc[1])
+df_ca_combined = pd.DataFrame([df_ca_combined])
+# drop first column
+df_ca_combined = df_ca_combined.drop(columns=df_ca_combined.columns[0])
+#make the column names dates
+df_ca_combined.columns = [convert_date_format(col) for col in df_ca_combined.columns]
+# Reset the index
+df_ca_combined.reset_index(drop=True, inplace=True)
+# drop nans
+df_ca_combined = df_ca_combined.dropna(axis=1, how='all')
+# first entry to 600
+df_ca_combined.iloc[0, 0] = 600
+
+# turn this into consumption of CA by getting the diff
+df_ca_combined = df_ca_combined.diff(axis=1).fillna(df_ca_combined.iloc[:, 0])
+# make the entry of 2025-07-01 a nan value as it was change of bottle
+change_of_bottle_dates = ['2025-07-01']
+for date in change_of_bottle_dates:
+    if date in df_ca_combined.columns:
+        df_ca_combined[date] = np.nan
+
+# Show the combined DataFrame
+print(df_ca_combined)
+# %%
+# Save the combined DataFrame to a pickle file
+df_ca_combined.to_pickle("cleaned_citric_acid_weight.pkl")
