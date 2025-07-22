@@ -8,15 +8,20 @@ from datetime import datetime
 #%%
 
 # Load the ODS file
-file_path = "/mnt/c/Users/HMARTINEZ/Downloads/Mice and Citric Acid Weight Measurements (09.07.2025).ods"
+file_path = "/mnt/c/Users/HMARTINEZ/Downloads/Mice and Citric Acid Weight Measurements (21.07.2025).xlsx"
 
 # Use the third row (index 2) as header
-df_clean = pd.read_excel(file_path, engine="odf", sheet_name="Mice weights", skiprows=2, nrows=12)
-df_ca = pd.read_excel(file_path, engine="odf", sheet_name="Citric acid weight", skiprows=3, nrows=2)
+df_clean = pd.read_excel(file_path, engine='openpyxl', sheet_name="Mice weights", skiprows=3, nrows=12)
+df_ca = pd.read_excel(file_path, engine='openpyxl', sheet_name="Citric acid weight", skiprows=3, nrows=2)
 
+#%%
 # Extract the original column names for processing
 original_columns = df_clean.columns
 original_columns_ca = df_ca.columns
+
+# if any is a datetime, convert it to string as YYYY-MM-DD
+original_columns = [col.strftime('%d/%m/%Y') if isinstance(col, datetime) else col for col in original_columns]
+original_columns_ca = [col.strftime('%d/%m/%Y') if isinstance(col, datetime) else col for col in original_columns_ca]
 
 def extract_date(col_name):
     # Try to find a date in the format dd/mm/yyyy
@@ -44,8 +49,8 @@ df_clean = df_clean.drop(columns=df_clean.columns[:2])
 # Reset the index
 df_clean.reset_index(drop=True, inplace=True)
 # assign the first row as the new header
-df_clean.columns = df_clean.iloc[0]
-df_clean = df_clean[1:]  # Remove the first row which is now the header
+# df_clean.columns = df_clean.iloc[0]
+# df_clean = df_clean[1:]  # Remove the first row which is now the header
 # Reset the index again
 df_clean.reset_index(drop=True, inplace=True)
 # Show the cleaned DataFrame
@@ -106,7 +111,7 @@ df_ca_combined.iloc[0, 0] = 600
 # turn this into consumption of CA by getting the diff
 df_ca_combined = df_ca_combined.diff(axis=1).fillna(df_ca_combined.iloc[:, 0])
 # make the entry of 2025-07-01 a nan value as it was change of bottle
-change_of_bottle_dates = ['2025-07-01']
+change_of_bottle_dates = ['2025-07-01', '2025-07-21']
 for date in change_of_bottle_dates:
     if date in df_ca_combined.columns:
         df_ca_combined[date] = np.nan
@@ -116,3 +121,5 @@ print(df_ca_combined)
 # %%
 # Save the combined DataFrame to a pickle file
 df_ca_combined.to_pickle("cleaned_citric_acid_weight.pkl")
+
+# %%
