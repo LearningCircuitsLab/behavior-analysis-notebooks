@@ -5,10 +5,11 @@ import numpy as np
 import re
 from datetime import datetime
 
+
 #%%
 
 # Load the ODS file
-file_path = "/mnt/c/Users/HMARTINEZ/Downloads/Mice and Citric Acid Weight Measurements (21.07.2025).xlsx"
+file_path = "/mnt/c/Users/HMARTINEZ/Downloads/Mice and Citric Acid Weight Measurements (18.08.2025).xlsx"
 
 # Use the third row (index 2) as header
 df_clean = pd.read_excel(file_path, engine='openpyxl', sheet_name="Mice weights", skiprows=3, nrows=12)
@@ -103,18 +104,26 @@ df_ca_combined = df_ca_combined.drop(columns=df_ca_combined.columns[0])
 df_ca_combined.columns = [convert_date_format(col) for col in df_ca_combined.columns]
 # Reset the index
 df_ca_combined.reset_index(drop=True, inplace=True)
-# drop nans
-df_ca_combined = df_ca_combined.dropna(axis=1, how='all')
 # first entry to 600
 df_ca_combined.iloc[0, 0] = 600
+# make the 4th of august a nan value as it has a comment
+df_ca_combined['2025-08-04'] = np.nan
+# remove the data between 2025-07-14 and 2025-07-21 (inclusive), as scale malfunctioned
+df_ca_combined = df_ca_combined.loc[:, ~df_ca_combined.columns.isin(
+    ['2025-07-14', '2025-07-15', '2025-07-16', '2025-07-17', '2025-07-18', '2025-07-19', '2025-07-20', '2025-07-21']
+)]
+# drop nans
+df_ca_combined = df_ca_combined.dropna(axis=1, how='all')
 
 # turn this into consumption of CA by getting the diff
 df_ca_combined = df_ca_combined.diff(axis=1).fillna(df_ca_combined.iloc[:, 0])
 # make the entry of 2025-07-01 a nan value as it was change of bottle
-change_of_bottle_dates = ['2025-07-01', '2025-07-21']
+change_of_bottle_dates = ['2025-07-01', '2025-07-22', '2025-07-28', '2025-08-05', '2025-08-13']
 for date in change_of_bottle_dates:
     if date in df_ca_combined.columns:
         df_ca_combined[date] = np.nan
+
+
 
 # Show the combined DataFrame
 print(df_ca_combined)
